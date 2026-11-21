@@ -170,16 +170,18 @@ function Tmog.OnEvent(self, event, arg1, arg2, arg3, arg4)
 
 		if availableTransmogs then
 			local slot = tonumber(availableSlot)
-			for itemID in string.gfind(availableTransmogs, "%d+") do
-				itemID = tonumber(itemID)
-				Tmog.CacheItem(itemID)
-				TMOG_CACHE[slot][itemID] = 1
-				-- check if it shares appearance with other items and add those if it does
-				local displayGroup = Tmog.ItemDisplayGroup[itemID]
-				if displayGroup then
-					for _, id in pairs(Tmog.DisplayGroups[displayGroup]) do
-						Tmog.CacheItem(id)
-						TMOG_CACHE[slot][id] = 1
+			if slot and TMOG_CACHE[slot] then
+				for itemID in string.gfind(availableTransmogs, "%d+") do
+					itemID = tonumber(itemID)
+					Tmog.CacheItem(itemID)
+					TMOG_CACHE[slot][itemID] = 1
+					-- check if it shares appearance with other items and add those if it does
+					local displayGroup = Tmog.ItemDisplayGroup[itemID]
+					if displayGroup then
+						for _, id in pairs(Tmog.DisplayGroups[displayGroup]) do
+							Tmog.CacheItem(id)
+							TMOG_CACHE[slot][id] = 1
+						end
 					end
 				end
 			end
@@ -188,7 +190,7 @@ function Tmog.OnEvent(self, event, arg1, arg2, arg3, arg4)
 			local itemID = tonumber(newTransmog)
 			local slot = Tmog.InventorySlotFromItemID(itemID)
 
-			if not (slot and itemID) then return end
+			if not (slot and itemID and TMOG_CACHE[slot]) then return end
 
 			Tmog.CacheItem(itemID)
 			TMOG_CACHE[slot][itemID] = 1
@@ -241,15 +243,18 @@ function Tmog.OnEvent(self, event, arg1, arg2, arg3, arg4)
 		-- Tmog.Positions was made using 16:9 screen
 		local relosutions = { GetScreenResolutions() }
 		local current = GetCurrentResolution()
-		local _, _, width, height = string.find(relosutions[current], "(%d+)x(%d+)")
-		local value = 16 / 9 - tonumber(width) / tonumber(height)
-		Tmog.offset = value
-		local model = self.model
-		model:SetPosition(0, 0, 0)
-		model:SetUnit("player")
-		model:SetPosition(model.z, model.x, model.y)
-		Tmog.Dress(model)
-		Tmog.debugprint(event, value, relosutions[current])
+		local resStr = current and relosutions[current]
+		local _, _, width, height = string.find(resStr or "", "(%d+)x(%d+)")
+		if width and height then
+			local value = 16 / 9 - tonumber(width) / tonumber(height)
+			Tmog.offset = value
+			local model = self.model
+			model:SetPosition(0, 0, 0)
+			model:SetUnit("player")
+			model:SetPosition(model.z, model.x, model.y)
+			Tmog.Dress(model)
+			Tmog.debugprint(event, value, resStr)
+		end
 	end
 end
 
@@ -434,8 +439,14 @@ LoadingFrame:SetScript("OnUpdate", function(self, elapsed)
 	end
 
 	local allCached = true
+	local anyCached = false
 	for id in pairs(self.queueIDs) do
-		if not GetItemInfo(id) then allCached = false end
+		if GetItemInfo(id) then
+			self.queueIDs[id] = nil
+			anyCached = true
+		else
+			allCached = false
+		end
 	end
 	for _, frame in pairs(Tmog.PreviewFrames) do
 		frame.button:EnableMouse(false)
@@ -443,9 +454,15 @@ LoadingFrame:SetScript("OnUpdate", function(self, elapsed)
 	TmogFrameLoadingTexture:Show()
 	if allCached or self.queueTimer <= 0 then
 		self.queueTimer = 0
+		for id in pairs(self.queueIDs) do self.queueIDs[id] = nil end
 		TmogFrameLoadingTexture:Hide()
 		for _, frame in pairs(Tmog.PreviewFrames) do
 			frame.button:EnableMouse(true)
+		end
+		if anyCached or allCached then
+			Tmog._suppressLoading = true
+			Tmog.UpdatePreviewsData()
+			Tmog._suppressLoading = nil
 		end
 		Tmog.UpdatePreviews()
 	else
@@ -538,6 +555,7 @@ function Tmog.UpdatePreviews()
 			elseif Tmog.Positions[invType] and Tmog.Positions[invType][Tmog.playerRace] then
 				positionInfo = Tmog.Positions[invType][Tmog.playerRace][Tmog.playerSex]
 			end
+			positionInfo = positionInfo or { 0, 0, 0, Tmog.defaultRotation }
 			local z = positionInfo[1] or 0
 			local x = positionInfo[2] or 0
 			local y = positionInfo[3] or 0
@@ -771,7 +789,7 @@ function Tmog.UpdateSelection()
 		Tmog.PreviewFrames[i].button:UnlockHighlight()
 	end
 	if Tmog.currentTab == "OUTFITS" then
-		if Tmog.currentPage ~= 1 then
+		if Tmog.currentPage ~= 1 and TmogFramePreview1ButtonPlus and TmogFramePreview1ButtonPlusPushed then
 			TmogFramePreview1ButtonPlus:Hide()
 			TmogFramePreview1ButtonPlusPushed:Hide()
 		end
@@ -1398,7 +1416,7 @@ function Tmog.UpdatePreviewsData()
 							if TmogConfig.onlyUsable and not Tmog.IsUsableItem(itemID) then insert = false end
 							if insert then table.insert(Tmog.ItemsSorted, itemID) end
 						end
-					elseif not LoadingFrame.queueIDs[itemID] then
+					elseif not Tmog._suppressLoading and not LoadingFrame.queueIDs[itemID] then
 						LoadingFrame.queueTimer = Tmog.loadingTimeMax
 						LoadingFrame.queueIDs[itemID] = true
 					end
@@ -1422,7 +1440,7 @@ function Tmog.UpdatePreviewsData()
 						SkipList[displayGroup] = true
 					end
 					if insert then table.insert(Tmog.ItemsSorted, itemID) end
-				elseif not LoadingFrame.queueIDs[itemID] then
+				elseif not Tmog._suppressLoading and not LoadingFrame.queueIDs[itemID] then
 					LoadingFrame.queueTimer = Tmog.loadingTimeMax
 					LoadingFrame.queueIDs[itemID] = true
 				end

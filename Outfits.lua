@@ -46,7 +46,8 @@ function Tmog.ShareOutfit(outfit)
 		if type(id) == "number" then
 			code = code..slot..":"..id..";"
 			local slotName = Tmog.InventorySlotToString[slot]
-			dbLinks = dbLinks.."**"..slotName.."**: "..GetItemInfo(id).." "..WEBSITE..id.."\n"
+			local itemName = GetItemInfo(id) or ("Item " .. id)
+			dbLinks = dbLinks.."**"..slotName.."**: "..itemName.." "..WEBSITE..id.."\n"
 		end
 	end
 
@@ -85,7 +86,7 @@ function Tmog.ValidateOutfitCode(code)
 		item = tonumber(item)
 		if slot and item then
 			outfit[slot] = item
-			Tmog.CacheItem(itemID)
+			Tmog.CacheItem(item)
 		end
 	end
 

@@ -31,7 +31,6 @@ M.has = {
 	classic  = (C_Item and C_Item.GetItemDataByID and C_Timer and C_Timer.NewTicker and GetItemSubClassInfo) and true or false,
 	superwow = ExportFile ~= nil and ImportFile ~= nil,
 	vhelpers = SetUnitVisibleItemID ~= nil,
-	nampower = GetNampowerVersion ~= nil,
 }
 
 local function say(msg) DEFAULT_CHAT_FRAME:AddMessage("|cff0070deTmog+|r " .. tostring(msg)) end
@@ -118,21 +117,37 @@ end
 -- Warm many items without flooding the server. onDone() when finished (or after 60 s).
 function M.Prefetch(ids, onDone, onProgress)
 	if not M.has.classic then if onDone then onDone() end return end
-	local i, n, t0 = 1, getn(ids), GetTime()
+	local i, n, t0, ticks = 1, getn(ids), GetTime(), 0
+	local pending, active = 0, {}
 	local t
 	t = C_Timer.NewTicker(0.05, function()
+		ticks = ticks + 1
 		local sent = 0
 		while i <= n and sent < M.requestsPerTick and inFlight < M.maxInFlight do
 			local id = ids[i]
 			i = i + 1
 			if not C_Item.IsItemDataCachedByID(id) then
-				M.GetItemData(id, function() end)
+				pending = pending + 1
+				active[id] = true
+				M.GetItemData(id, function(loadedId)
+					if active[loadedId] then
+						active[loadedId] = nil
+						pending = pending - 1
+					end
+				end)
 				sent = sent + 1
 			end
 		end
-		if onProgress and mod(floor(GetTime() * 20), 40) == 0 then onProgress(i, n) end
-		if (i > n and inFlight <= 0) or GetTime() - t0 > 60 then
+		if onProgress and mod(ticks, 40) == 0 then onProgress(i, n) end
+		if (i > n and pending <= 0) or GetTime() - t0 > 60 then
 			t:Cancel()
+			for id in pairs(active) do
+				if waiting[id] then
+					waiting[id] = nil
+					inFlight = inFlight - 1
+				end
+			end
+			if inFlight < 0 then inFlight = 0 end
 			if onDone then onDone() end
 		end
 	end)
@@ -144,6 +159,7 @@ end
 ------------------------------------------------------------------------
 local LF = TmogLoadingFrame
 if LF and M.has.classic then
+	local mouseDisabled = false
 	LF:SetScript("OnUpdate", function(self, elapsed)
 		self = self or this
 		elapsed = elapsed or arg1
@@ -159,16 +175,31 @@ if LF and M.has.classic then
 		else
 			self.dotTimer = self.dotTimer - elapsed
 		end
-		local remaining = 0
+		local remaining, anyCached = 0, false
 		for id in pairs(self.queueIDs) do
-			if GetItemInfo(id) then self.queueIDs[id] = nil else remaining = remaining + 1 end
+			if GetItemInfo(id) then
+				self.queueIDs[id] = nil
+				anyCached = true
+			else
+				remaining = remaining + 1
+			end
 		end
-		for _, frame in pairs(Tmog.PreviewFrames) do frame.button:EnableMouse(false) end
+		if not mouseDisabled then
+			mouseDisabled = true
+			for _, frame in pairs(Tmog.PreviewFrames) do frame.button:EnableMouse(false) end
+		end
 		TmogFrameLoadingTexture:Show()
 		if remaining == 0 or self.queueTimer <= 0 then
 			self.queueTimer = 0
+			for id in pairs(self.queueIDs) do self.queueIDs[id] = nil end
 			TmogFrameLoadingTexture:Hide()
+			mouseDisabled = false
 			for _, frame in pairs(Tmog.PreviewFrames) do frame.button:EnableMouse(true) end
+			if anyCached or remaining == 0 then
+				Tmog._suppressLoading = true
+				Tmog.UpdatePreviewsData()
+				Tmog._suppressLoading = nil
+			end
 			Tmog.UpdatePreviews()
 		else
 			self.queueTimer = self.queueTimer - elapsed
@@ -228,6 +259,44 @@ if M.has.classic and Tmog.GetTransmogSlot then
 			end
 		end
 		return orig(itemID, unit, tooltip)
+	end
+end
+
+if M.has.classic and Tmog.IsUsableItem then
+	local origUsable = Tmog.IsUsableItem
+	Tmog.IsUsableItem = function(id)
+		local d = M.Peek(id)
+		if not d then return origUsable(id) end
+		if not TmogConfig.ignoreLevel and (d.requiredLevel or 0) > UnitLevel("player") then
+			return false
+		end
+		local _, classEn = UnitClass("player")
+		if not PROF then buildProf() end
+		local set = PROF[classEn]
+		if not set or not set[d.classID .. ":" .. d.subclassID] then return false end
+		if not DUAL[classEn] and (d.equipLoc == "INVTYPE_WEAPONOFFHAND" or (d.equipLoc == "INVTYPE_WEAPON" and Tmog.currentSlot == 17)) then
+			return false
+		end
+		local mask, bit = d.allowableClass, CLASS_BIT[classEn]
+		if mask and mask > 0 and bit and mod(floor(mask / bit), 2) == 0 then return false end
+		-- Fall back to tooltip scan only for race, skill, faction, honor, or spell restrictions
+		if (d.allowableRace and d.allowableRace > 0) or (d.requiredSkill or 0) > 0 or (d.requiredFaction or 0) > 0 or (d.requiredHonorRank or 0) > 0 or (d.requiredSpell or 0) > 0 then
+			return origUsable(id)
+		end
+		return true
+	end
+end
+
+if M.has.classic and Tmog.GetItemIDByName then
+	local origByName = Tmog.GetItemIDByName
+	Tmog.GetItemIDByName = function(name)
+		if not name or name == "" then return nil end
+		local _, link = GetItemInfo(name)
+		if link then
+			local id = Tmog.IDFromLink(link)
+			if id then return id end
+		end
+		return origByName(name)
 	end
 end
 
@@ -367,6 +436,7 @@ end
 ------------------------------------------------------------------------
 function M.Morph(gear)
 	if not M.has.vhelpers then return say("VanillaHelpers not loaded") end
+	if type(gear) ~= "table" then return say("no gear to morph") end
 	local n = 0
 	for slot, id in pairs(gear) do -- outfit tables also hold .name, skipped by the type checks
 		if type(slot) == "number" and type(id) == "number" and id > 0 then
@@ -446,11 +516,18 @@ end
 -- 8. Optional: auto-run group supplement after login (items stay in the client cache)
 ------------------------------------------------------------------------
 local ev = CreateFrame("Frame")
+ev:RegisterEvent("PLAYER_LOGIN")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:SetScript("OnEvent", function()
-	ev:UnregisterEvent("PLAYER_ENTERING_WORLD")
-	if M.has.classic and cfg().modernAutoGroups then
-		C_Timer.After(15, function() M.SupplementGroups(true) end)
+	if event == "PLAYER_LOGIN" then
+		M.has.classic  = (C_Item and C_Item.GetItemDataByID and C_Timer and C_Timer.NewTicker and GetItemSubClassInfo) and true or false
+		M.has.superwow = ExportFile ~= nil and ImportFile ~= nil
+		M.has.vhelpers = SetUnitVisibleItemID ~= nil
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		ev:UnregisterEvent("PLAYER_ENTERING_WORLD")
+		if M.has.classic and cfg().modernAutoGroups then
+			C_Timer.After(15, function() M.SupplementGroups(true) end)
+		end
 	end
 end)
 

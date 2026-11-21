@@ -138,7 +138,7 @@ function Tmog.HookTooltip(frame)
 	function frame.SetCraftItem(self, skill, slot)
 		self.insideHook = true
 		original_SetCraftItem(self, skill, slot)
-		self.nsideHook = nil
+		self.insideHook = nil
 		self.itemID = Tmog.IDFromLink(GetCraftReagentItemLink(skill, slot))
 		Tmog.ExtendTooltip(self)
 	end
@@ -218,6 +218,7 @@ end
 local maxLines = 30
 function Tmog.ExtendTooltip(self)
     self = self or this
+	if self.tmogLine then return end
 	local itemID = tonumber(self.itemID)
 	if itemID and self ~= TmogTooltip and Tmog.Transmogable(itemID) then
 		local line = ""

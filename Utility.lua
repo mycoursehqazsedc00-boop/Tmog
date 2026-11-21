@@ -194,7 +194,7 @@ do
 		local ret = type(t) == "table" and t or items
 		for i = table.getn(ret), 1, -1 do table.remove(ret, i) end
 		for _, id in pairs(Tmog.DisplayGroups[displayGroup]) do
-			if Tmog.CacheItem(id) and id ~= itemID then table.insert(ret, table.getn(ret), id) end
+			if Tmog.CacheItem(id) and id ~= itemID then table.insert(ret, id) end
 		end
 		return ret
 	end
