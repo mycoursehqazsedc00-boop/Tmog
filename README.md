@@ -59,6 +59,13 @@
 ### Initial Collection Caching
 To cache existing transmogs on first use, speak to the Fashionista NPC in Stormwind or Orgrimmar and click through each armor slot and each weapon type you have unlocked while wearing an item of that type.
 
+## Preview
+
+![tooltip2](https://github.com/user-attachments/assets/6a306561-45c8-4c5b-9f12-1e9179a496ab)
+![tooltip1](https://github.com/user-attachments/assets/01ccac85-ef1d-45d5-91f7-c448c13af8b5)
+![gui1](https://github.com/user-attachments/assets/3c361dd1-ce43-43be-8bbd-06382e22841c)
+![gui2](https://github.com/user-attachments/assets/5c2bfcf8-bb83-43a3-97c2-5df0e27d5d53)
+
 ## Credits & License
 
 - **Original addon:** [Otari98](https://github.com/Otari98/Tmog) (v5.0.1)
