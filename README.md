@@ -1,23 +1,66 @@
-# Tmog
-Addon for TurtleWoW that adds information about your transmog collection on item tooltips. Comes with Item Browser where you can search and try on all items in the game and make outfits.<br>
+# Tmog (Patched for WoW 1.12 / Turtle WoW)
 
-## Instruction
-Download addon, extract into Interface/Addons, remove `-master`, folder should be named `Tmog`.<br>
+> Item browser, outfit manager, and transmog collection tooltip addon for Turtle WoW, enhanced with optional client-mod acceleration and bug fixes.
 
-If this is first time using addon you need to cache your existing transmog collection. Go to fashionista in Stormwind or Orgrimmar, click on every item slot, you need to do this for all weapon types (two-hand, polearms, staves, one-hand swords/axes/maces, daggers, shields, off-hand holdables, wands, crossbows, bows, guns).<br>
-For example if you have transmogs for daggers and polearms, you need to equip any dagger, go to transmog npc and click on dagger, then equip any polearm, talk to npc again, click on polearm. Repeat for other weapon types that you have.
-For armor slots clicking once should be enough.<br>
+## Client Mods Used
 
-If you have multiple transmogged gear pieces for a given slot, you need to talk to fashionista while wearing each of these gear pieces.
+| Mod | Purpose in this addon | Required? |
+|---|---|---|
+| **ClassicAPI** | Throttled async item caching (`C_Item.RequestLoadItemDataByID`, `ITEM_DATA_LOAD_RESULT`, `C_Timer`), tooltip-free `GetTransmogSlot` / `IsUsableItem` (`C_Item.GetItemDataByID`, `GetItemSubClassInfo`), O(1) `GetItemInfo` name lookup, and `HookScript` / `hooksecurefunc` tooltip hooks | Optional |
+| **SuperWoW** | Outfit and collection backup/restore via `ExportFile` / `ImportFile` (`/tmogmod backup`, `/tmogmod restore`), plus `GetInboxItemLink` for inbox tooltips | Optional |
+| **VanillaHelpers** | Client-side character appearance preview (`SetUnitVisibleItemID` via `/tmogmod morph` / `unmorph`) and `GetItemDisplayID` lookup for appearance group auditing | Optional |
 
-## Preview
+*(The addon works in stock WoW 1.12 without any client mods; features that depend on optional DLLs are disabled automatically when absent.)*
 
-![tooltip2](https://github.com/user-attachments/assets/6a306561-45c8-4c5b-9f12-1e9179a496ab)
-![tooltip1](https://github.com/user-attachments/assets/01ccac85-ef1d-45d5-91f7-c448c13af8b5)
-![gui1](https://github.com/user-attachments/assets/3c361dd1-ce43-43be-8bbd-06382e22841c)
-![gui2](https://github.com/user-attachments/assets/5c2bfcf8-bb83-43a3-97c2-5df0e27d5d53)
+## Features
 
-## Thanks to
-[Shagu](https://github.com/shagu)<br>
-[Zaas](https://github.com/Zebouski)<br>
-[CosminPOP](https://github.com/CosminPOP)
+- **Tooltip Collection Info:** Displays whether an item's appearance is `Collected` or `Not collected`, whether it is `Unique`, `Non-unique` (with shared-appearance count), or `Unknown`, and lists any saved outfits using it.
+- **3D Item Browser & Dressing Room:** Browse all transmog-eligible items by slot and armor/weapon type, filter by `Collected`, `Not collected`, `Only usable`, and `Ignore level`, search by name, and inspect shared-appearance items (`Right-Click`).
+- **Outfit Manager:** Save, rename, delete, share (`T.O.L.` codes and database links), and link outfits directly into chat (`|Houtfit:...|h`).
+- **Fullscreen Preview:** Toggle a fullscreen 3D model view with rotation, pan, zoom, and screenshot support.
+- **Automatic Collection Sync:** Records unlocked appearances from equipped gear (`UNIT_INVENTORY_CHANGED`) and Turtle WoW `TW_TRANSMOG` addon messages.
+
+## What Was Added / Improved
+
+- **Added (`TmogModern.lua`):**
+  - Throttled ClassicAPI item prefetching (`30` items per `0.05s` tick) to eliminate UI freezes when opening uncached slots.
+  - Tooltip-free `Tmog.GetTransmogSlot`, `Tmog.IsUsableItem` fast-path (falling back to tooltip scan only for race/skill/faction/honor/spell restrictions), and O(1) `Tmog.GetItemIDByName` lookup when ClassicAPI is loaded.
+  - O(1) `Tmog.IsKnownAppearance` lookup index built from `Tmog.ItemDB`.
+  - Appearance group auditing/supplementing (`/tmogmod audit`, `/tmogmod groups`), local client-side morphing (`/tmogmod morph`, `/tmogmod unmorph`), and SuperWoW file backup/restore (`/tmogmod backup`, `/tmogmod restore`).
+- **Improved:**
+  - `TmogLoadingFrame` now prunes cached IDs and rebuilds `Tmog.UpdatePreviewsData()` once loading completes so newly cached items appear immediately without re-clicking the slot.
+  - `M.Prefetch` now tracks progress reliably via tick count and cleans up timed-out entries so `inFlight` does not leak.
+- **Fixed:**
+  - `Utility.lua`: Fixed `GetSameAppearanceItems()` inserting at index `0` / reversing order (`table.insert(ret, table.getn(ret), id)` -> `table.insert(ret, id)`).
+  - `Tooltip.lua`: Fixed `SetCraftItem` fallback typo (`self.nsideHook` -> `self.insideHook`) and added duplicate-line guard (`self.tmogLine`) in `ExtendTooltip`.
+  - `Outfits.lua`: Fixed `ValidateOutfitCode()` passing `nil` (`itemID`) to `Tmog.CacheItem()` instead of `item`, and guarded `ShareOutfit()` against uncached `GetItemInfo()` `nil` returns.
+  - `Tmog.lua`: Added nil-safety guards for `CHAT_MSG_ADDON` (`TMOG_CACHE[slot]`), `DISPLAY_SIZE_CHANGED`, `UpdatePreviews()` `positionInfo`, and `UpdateSelection()` `TmogFramePreview1ButtonPlus`.
+
+## Usage
+
+### Core Commands (`/tmog`)
+- `/tmog show` — Toggle the dressing room window
+- `/tmog reset` — Reset minimap button position
+- `/tmog lock` — Lock/unlock minimap button
+- `/tmog wipe` — Reset this character's collected appearances cache
+- `/tmog repair` — Attempt to repair this character's cache
+- `/tmog debug` — Toggle debug messages in chat
+
+### Client-Mod Commands (`/tmogmod`)
+- `/tmogmod status` — Show detected client mods and current settings
+- `/tmogmod cache on|off` — Toggle ClassicAPI async item caching (on by default)
+- `/tmogmod groups [auto on|off]` — Supplement missing appearance groups from client display IDs
+- `/tmogmod audit` — Audit static appearance groups against client display IDs
+- `/tmogmod morph [outfit]` — Preview current dressing room gear or named outfit on your character locally (requires VanillaHelpers)
+- `/tmogmod unmorph` — Clear local morph (requires VanillaHelpers)
+- `/tmogmod backup` / `restore` — Export/import outfits and collection to `imports/` (requires SuperWoW)
+- `/tmogmod dump <itemID>` — Print item data, display ID, and resolved transmog slot
+
+### Initial Collection Caching
+To cache existing transmogs on first use, speak to the Fashionista NPC in Stormwind or Orgrimmar and click through each armor slot and each weapon type you have unlocked while wearing an item of that type.
+
+## Credits & License
+
+- **Original addon:** [Otari98](https://github.com/Otari98/Tmog) (v5.0.1)
+- **Original thanks:** [Shagu](https://github.com/shagu), [Zaas](https://github.com/Zebouski), [CosminPOP](https://github.com/CosminPOP)
+- **License:** Same as original addon unless stated otherwise.
