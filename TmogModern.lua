@@ -274,6 +274,7 @@ if M.has.classic and Tmog.IsUsableItem then
 		if not PROF then buildProf() end
 		local set = PROF[classEn]
 		if not set or not set[d.classID .. ":" .. d.subclassID] then return false end
+		if d.classID == 2 and d.subclassID == 14 then return false end -- "not a real weapon"
 		if not DUAL[classEn] and (d.equipLoc == "INVTYPE_WEAPONOFFHAND" or (d.equipLoc == "INVTYPE_WEAPON" and Tmog.currentSlot == 17)) then
 			return false
 		end
@@ -284,19 +285,6 @@ if M.has.classic and Tmog.IsUsableItem then
 			return origUsable(id)
 		end
 		return true
-	end
-end
-
-if M.has.classic and Tmog.GetItemIDByName then
-	local origByName = Tmog.GetItemIDByName
-	Tmog.GetItemIDByName = function(name)
-		if not name or name == "" then return nil end
-		local _, link = GetItemInfo(name)
-		if link then
-			local id = Tmog.IDFromLink(link)
-			if id then return id end
-		end
-		return origByName(name)
 	end
 end
 

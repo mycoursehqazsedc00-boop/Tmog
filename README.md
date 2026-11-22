@@ -6,7 +6,7 @@
 
 | Mod | Purpose in this addon | Required? |
 |---|---|---|
-| **ClassicAPI** | Throttled async item caching (`C_Item.RequestLoadItemDataByID`, `ITEM_DATA_LOAD_RESULT`, `C_Timer`), tooltip-free `GetTransmogSlot` / `IsUsableItem` (`C_Item.GetItemDataByID`, `GetItemSubClassInfo`), O(1) `GetItemInfo` name lookup, and `HookScript` / `hooksecurefunc` tooltip hooks | Optional |
+| **ClassicAPI** | Throttled async item caching (`C_Item.RequestLoadItemDataByID`, `ITEM_DATA_LOAD_RESULT`, `C_Timer`), tooltip-free `GetTransmogSlot` / `IsUsableItem` (`C_Item.GetItemDataByID`, `GetItemSubClassInfo`), and `HookScript` / `hooksecurefunc` tooltip hooks | Optional |
 | **SuperWoW** | Outfit and collection backup/restore via `ExportFile` / `ImportFile` (`/tmogmod backup`, `/tmogmod restore`), plus `GetInboxItemLink` for inbox tooltips | Optional |
 | **VanillaHelpers** | Client-side character appearance preview (`SetUnitVisibleItemID` via `/tmogmod morph` / `unmorph`) and `GetItemDisplayID` lookup for appearance group auditing | Optional |
 
@@ -24,7 +24,7 @@
 
 - **Added (`TmogModern.lua`):**
   - Throttled ClassicAPI item prefetching (`30` items per `0.05s` tick) to eliminate UI freezes when opening uncached slots.
-  - Tooltip-free `Tmog.GetTransmogSlot`, `Tmog.IsUsableItem` fast-path (falling back to tooltip scan only for race/skill/faction/honor/spell restrictions), and O(1) `Tmog.GetItemIDByName` lookup when ClassicAPI is loaded.
+  - Tooltip-free `Tmog.GetTransmogSlot` and `Tmog.IsUsableItem` fast-path (falling back to tooltip scan only for race/skill/faction/honor/spell restrictions) when ClassicAPI is loaded.
   - O(1) `Tmog.IsKnownAppearance` lookup index built from `Tmog.ItemDB`.
   - Appearance group auditing/supplementing (`/tmogmod audit`, `/tmogmod groups`), local client-side morphing (`/tmogmod morph`, `/tmogmod unmorph`), and SuperWoW file backup/restore (`/tmogmod backup`, `/tmogmod restore`).
 - **Improved:**
