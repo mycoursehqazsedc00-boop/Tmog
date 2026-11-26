@@ -546,9 +546,9 @@
 					<OnLeave>
 						TmogTooltip:Hide()
 					</OnLeave>
-					<OnMouseUp>
+					<OnClick>
 						Tmog.ToggleFrame()
-					</OnMouseUp>
+					</OnClick>
 				</Scripts>
 			</Button>
 			<Frame name="TmogFrameShareDialog" hidden="true" movable="true" enableMouse="true" toplevel="true">

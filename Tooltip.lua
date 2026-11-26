@@ -252,7 +252,7 @@ function Tmog.ExtendTooltip(self)
 		end
 		local slot = Tmog.GetTransmogSlot(itemID, "player", self)
 		if slot then
-			if TMOG_CACHE[slot][itemID] then
+			if TMOG_CACHE[slot] and TMOG_CACHE[slot][itemID] then
 				line = "("..GREEN..L["Collected"].."|r"..") "..line
 			else
 				line = "("..PINK..L["Not collected"].."|r"..") "..line

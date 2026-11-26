@@ -31,10 +31,12 @@
   - `TmogLoadingFrame` now prunes cached IDs and rebuilds `Tmog.UpdatePreviewsData()` once loading completes so newly cached items appear immediately without re-clicking the slot.
   - `M.Prefetch` now tracks progress reliably via tick count and cleans up timed-out entries so `inFlight` does not leak.
 - **Fixed:**
+  - `Constants.lua`: Mapped `highelf` preview camera positions to `bloodelf` so High Elf characters on Turtle WoW get proper model framing instead of falling back to defaults.
   - `Utility.lua`: Fixed `GetSameAppearanceItems()` inserting at index `0` / reversing order (`table.insert(ret, table.getn(ret), id)` -> `table.insert(ret, id)`).
-  - `Tooltip.lua`: Fixed `SetCraftItem` fallback typo (`self.nsideHook` -> `self.insideHook`) and added duplicate-line guard (`self.tmogLine`) in `ExtendTooltip`.
-  - `Outfits.lua`: Fixed `ValidateOutfitCode()` passing `nil` (`itemID`) to `Tmog.CacheItem()` instead of `item`, and guarded `ShareOutfit()` against uncached `GetItemInfo()` `nil` returns.
-  - `Tmog.lua`: Added nil-safety guards for `CHAT_MSG_ADDON` (`TMOG_CACHE[slot]`), `DISPLAY_SIZE_CHANGED`, `UpdatePreviews()` `positionInfo`, and `UpdateSelection()` `TmogFramePreview1ButtonPlus`.
+  - `Tooltip.lua`: Fixed `SetCraftItem` fallback typo (`self.nsideHook` -> `self.insideHook`), added duplicate-line guard (`self.tmogLine`) in `ExtendTooltip`, and guarded `TMOG_CACHE[slot]`.
+  - `Outfits.lua`: Fixed `ValidateOutfitCode()` leaving `"T.O.L."` in the string (which caused every `T.O.L.` import and `/tmogmod restore` outfit restore to fail) and passing `nil` (`itemID`) to `Tmog.CacheItem()`; fixed `ParseOutfitLink()` to handle full chat hyperlinks; capped `OutfitsDropDown_Initialize()` at `UIDROPDOWNMENU_MAXBUTTONS`; guarded `ShareOutfit()` against uncached `GetItemInfo()` `nil` returns and `DeleteOutfitButton_OnLoad()` against nil dropdown buttons.
+  - `Tmog.lua`: Fixed Outfits tab tooltip showing the wrong outfit when searching (`Tmog.OutfitsSorted[self:GetID()]` instead of `TMOG_PLAYER_OUTFITS[self:GetID()]`); added nil-safety guards for `CHAT_MSG_ADDON` (`TMOG_CACHE[slot]`), `DISPLAY_SIZE_CHANGED`, `UpdatePreviews()` `positionInfo`, `UpdateSelection()` `TmogFramePreview1ButtonPlus`, `PreviewButton_OnEnter()` `itemID`, and `ItemDB[slot][type]`.
+  - `Tmog.xml`: Switched `TmogButton` from `<OnMouseUp>` to `<OnClick>` so dragging the minimap button does not toggle the dressing room.
 
 ## Usage
 

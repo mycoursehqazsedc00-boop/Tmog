@@ -699,7 +699,7 @@ function Tmog.UpdatePreviews()
 				local itemID = outfitData[slot]
 				if itemID then
 					table.insert(model.items, itemID)
-					if not TMOG_CACHE[slot][itemID] then collectedAll = false end
+					if not (TMOG_CACHE[slot] and TMOG_CACHE[slot][itemID]) then collectedAll = false end
 				end
 			end
 
@@ -926,7 +926,7 @@ function Tmog.PlayerSlot_OnEnter(self)
 	if itemName and quality then
 		local r, g, b = GetItemQualityColor(quality)
 		TmogTooltip:SetText(itemName, r, g, b)
-		if TMOG_CACHE[slot][itemID] then
+		if TMOG_CACHE[slot] and TMOG_CACHE[slot][itemID] then
 			TmogTooltip:AddLine(GREEN..L["Collected"].."|r")
 		else
 			TmogTooltip:AddLine(PINK..L["Not collected"].."|r")
@@ -1187,6 +1187,7 @@ function Tmog.PreviewButton_OnEnter(self)
 
 	if Tmog.currentTab == "ITEMS" then
 		local itemID = self:GetParent().itemID
+		if not itemID then return end
 		TmogTooltip.itemID = itemID
 		TmogTooltip:SetOwner(self, "ANCHOR_RIGHT", -5, -8)
 		TmogTooltip:SetHyperlink("item:"..itemID)
@@ -1231,7 +1232,7 @@ function Tmog.PreviewButton_OnEnter(self)
 			TmogTooltip:AddLine(L["Create an outfit from selected items."], 1, 0.82, 0, true)
 		else
 			TmogTooltip:AddDoubleLine(tooltipTitle, " ", 1, 1, 1, 1, 1, 1)
-			local outfitData = TMOG_PLAYER_OUTFITS[self:GetID()]
+			local outfitData = Tmog.OutfitsSorted[self:GetID()]
 			local numItemsInOutfit = 0
 			local numCollected = 0
 			if outfitData then
@@ -1243,7 +1244,7 @@ function Tmog.PreviewButton_OnEnter(self)
 						if itemName and slotName then
 							local _, _, _, color = GetItemQualityColor(itemQuality or 1)
 							local status = ""
-							if TMOG_CACHE[slot][itemID] then
+							if TMOG_CACHE[slot] and TMOG_CACHE[slot][itemID] then
 								status = NORMAL..L["Collected"].."|r"
 								numCollected = numCollected + 1
 							else
@@ -1424,7 +1425,9 @@ function Tmog.UpdatePreviewsData()
 			end
 		else
 			for k in pairs(SkipList) do SkipList[k] = nil end
-			for itemID in pairs(Tmog.ItemDB[Tmog.currentSlot][Tmog.currentType]) do
+			local slotItems = Tmog.ItemDB[Tmog.currentSlot] and Tmog.ItemDB[Tmog.currentSlot][Tmog.currentType]
+			if slotItems then
+			for itemID in pairs(slotItems) do
 				local itemName = Tmog.CacheItem(itemID)
 				if itemName then
 					local insert = Tmog.Transmogable(itemID)
@@ -1444,6 +1447,7 @@ function Tmog.UpdatePreviewsData()
 					LoadingFrame.queueTimer = Tmog.loadingTimeMax
 					LoadingFrame.queueIDs[itemID] = true
 				end
+			end
 			end
 		end
 		Tmog.totalPages = math.ceil(table.getn(Tmog.ItemsSorted) / Tmog.itemsPerPage)

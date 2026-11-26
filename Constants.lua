@@ -506,4 +506,10 @@ Tmog.Positions["INVTYPE_BODY"] = Tmog.Positions["INVTYPE_CHEST"]
 Tmog.Positions["INVTYPE_WEAPON"] = Tmog.Positions["INVTYPE_WEAPONMAINHAND"]
 Tmog.Positions["INVTYPE_2HWEAPON"] = Tmog.Positions["INVTYPE_WEAPONMAINHAND"]
 
+for _, raceTable in pairs(Tmog.Positions) do
+	if raceTable.bloodelf and not raceTable.highelf then
+		raceTable.highelf = raceTable.bloodelf
+	end
+end
+
 Tmog.PositionsOutfit = { 1.50, 0.00, -0.20, 0.30 }

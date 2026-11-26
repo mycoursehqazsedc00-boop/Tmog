@@ -75,10 +75,10 @@ function Tmog.ValidateOutfitCode(code)
 	local signature = string.find(code, "T.O.L.", 1, true)
 	if not signature then return nil end
 
-	code = string.sub(code, signature)
+	code = string.sub(code, signature + 6)
 	code = Tmog.strtrim(code)
 
-	if string.find(code, "[^%d:;]") then return nil end
+	if code == "" or string.find(code, "[^%d:;]") then return nil end
 
 	local outfit = {}
 	for slot, item in string.gfind(code, "(%d+):(%d+)") do
@@ -90,7 +90,7 @@ function Tmog.ValidateOutfitCode(code)
 		end
 	end
 
-	return outfit
+	return next(outfit) and outfit or nil
 end
 
 function Tmog.LoadOutfit(outfit)
@@ -207,7 +207,8 @@ local charsPerItem = 3
 
 function Tmog.ParseOutfitLink(link)
 	if not (link and string.find(link, "outfit:")) then return nil end
-	local payload = string.gsub(link, "^.*outfit:(.+).*$", "%1", 1)
+	local _, _, payload = string.find(link, "outfit:([^|%s]+)")
+	if not payload or payload == "" then return nil end
 	local t = {}
 	for i = 1, string.len(payload), charsPerItem do
 		local group = string.sub(payload, i, i + charsPerItem - 1)
@@ -325,6 +326,7 @@ function Tmog.OutfitsDropDown_Initialize()
 
 	local info = UIDropDownMenu_CreateInfo()
 
+	local maxOutfits = UIDROPDOWNMENU_MAXBUTTONS
 	if table.getn(TMOG_PLAYER_OUTFITS) < UIDROPDOWNMENU_MAXBUTTONS then
 		info.text = GREEN_FONT_COLOR_CODE..L["New outfit"].."|r"
 		info.value = 0
@@ -334,9 +336,11 @@ function Tmog.OutfitsDropDown_Initialize()
 		info.tooltipTitle = L["New outfit"]
 		info.tooltipText = L["Create an outfit from selected items."]
 		UIDropDownMenu_AddButton(info)
+		maxOutfits = UIDROPDOWNMENU_MAXBUTTONS - 1
 	end
 
-	for i = 1, table.getn(TMOG_PLAYER_OUTFITS) do
+	local count = math.min(table.getn(TMOG_PLAYER_OUTFITS), maxOutfits)
+	for i = 1, count do
 		local outfitData = TMOG_PLAYER_OUTFITS[i]
 		local name = outfitData.name
 		info.text = name
@@ -352,7 +356,7 @@ function Tmog.OutfitsDropDown_Initialize()
 				slotName = Tmog.InventorySlotToString[slot]
 				local itemName, itemQuality, itemTexture = Tmog.CacheItem(itemID)
 				if itemName and slotName then
-					local _, _, _, color = GetItemQualityColor(itemQuality)
+					local _, _, _, color = GetItemQualityColor(itemQuality or 1)
 					tooltipText = tooltipText..NORMAL..slotName..":|r "..color.. itemName.."|r\n"
 				end
 			end
@@ -365,28 +369,30 @@ end
 function Tmog.DeleteOutfitButton_OnLoad(self)
 	for i = 2, UIDROPDOWNMENU_MAXBUTTONS do
 		local button = _G["DropDownList1Button"..i]
-		local onEnter = button:GetScript("OnEnter")
-		local onLeave = button:GetScript("OnLeave")
-		button:SetScript("OnEnter", function(self)
-			self = self or this
-			if UIDROPDOWNMENU_OPEN_MENU == "TmogFrameOutfitsDropDown" then
-				TmogDeleteOutfitButton:Show()
-				TmogDeleteOutfitButton:ClearAllPoints()
-				TmogDeleteOutfitButton:SetPoint("LEFT", self:GetName().."InvisibleButton", "RIGHT", 8, 0)
-				TmogDeleteOutfitButton:SetFrameLevel(self:GetFrameLevel() + 2)
-				TmogDeleteOutfitButton.parent = self
-			else
-				TmogDeleteOutfitButton:Hide()
-			end
-			if onEnter then return onEnter(self) end
-		end)
-		button:SetScript("OnLeave", function(self)
-			self = self or this
-			if GetMouseFocus() ~= TmogDeleteOutfitButton and TmogDeleteOutfitButton:IsShown() then
-				TmogDeleteOutfitButton:Hide()
-			end
-			if onLeave then return onLeave(self) end
-		end)
+		if button then
+			local onEnter = button:GetScript("OnEnter")
+			local onLeave = button:GetScript("OnLeave")
+			button:SetScript("OnEnter", function(self)
+				self = self or this
+				if UIDROPDOWNMENU_OPEN_MENU == "TmogFrameOutfitsDropDown" then
+					TmogDeleteOutfitButton:Show()
+					TmogDeleteOutfitButton:ClearAllPoints()
+					TmogDeleteOutfitButton:SetPoint("LEFT", self:GetName().."InvisibleButton", "RIGHT", 8, 0)
+					TmogDeleteOutfitButton:SetFrameLevel(self:GetFrameLevel() + 2)
+					TmogDeleteOutfitButton.parent = self
+				else
+					TmogDeleteOutfitButton:Hide()
+				end
+				if onEnter then return onEnter(self) end
+			end)
+			button:SetScript("OnLeave", function(self)
+				self = self or this
+				if GetMouseFocus() ~= TmogDeleteOutfitButton and TmogDeleteOutfitButton:IsShown() then
+					TmogDeleteOutfitButton:Hide()
+				end
+				if onLeave then return onLeave(self) end
+			end)
+		end
 	end
 	local onHide = DropDownList1:GetScript("OnHide")
 	DropDownList1:SetScript("OnHide", function(self)
